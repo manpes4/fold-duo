@@ -9,16 +9,33 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Trouver le projet
+        id: find
+        run: |
+          f=$(find . -name settings.gradle.kts | head -1)
+          if [ -z "$f" ]; then echo "settings.gradle.kts introuvable"; find . -type f | head -50; exit 1; fi
+          d=$(dirname "$f")
+          echo "Projet trouve dans : $d"
+          ls -la "$d"
+          echo "dir=$d" >> "$GITHUB_OUTPUT"
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
+
+      - uses: android-actions/setup-android@v3
+
       - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
       - name: Compiler l'APK (debug)
-        run: |
-          chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+        working-directory: ${{ steps.find.outputs.dir }}
+        run: gradle assembleDebug --no-daemon
+
       - uses: actions/upload-artifact@v4
         with:
           name: FoldFX-apk
-          path: app/build/outputs/apk/debug/*.apk
+          path: ${{ steps.find.outputs.dir }}/app/build/outputs/apk/debug/*.apk
